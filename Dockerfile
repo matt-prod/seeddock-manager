@@ -1,8 +1,11 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
-    git curl ssh sudo \
-    && pip install --upgrade pip \
+    git curl ssh sudo
+
+COPY requirements.txt /opt/requirements.txt
+
+RUN pip install --upgrade pip \
     && pip install -r /opt/requirements.txt \
     && apt-get clean
 
