@@ -1,2 +1,3 @@
-ansible
-flask
+fastapi
+uvicorn
+jinja2
