@@ -1,24 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
+    <meta charset="UTF-8">
     <title>SeedDock Manager</title>
-    <meta charset="utf-8">
     <style>
         body {
-          background-color: #000;
-          color: #0f0;
-          font-family: monospace;
-          margin: 0;
-          padding: 2em;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 2em;
+            background-color: #f0f0f0;
         }
-        pre {
-          white-space: pre-wrap;
-          word-wrap: break-word;
+        h1 {
+            color: #333;
+        }
+        pre.logo {
+            font-family: monospace;
+            background-color: #111;
+            color: #0f0;
+            padding: 1em;
+            overflow-x: auto;
+            border-radius: 5px;
+        }
+        .content {
+            margin-top: 2em;
         }
     </style>
 </head>
 <body>
     <h1>Bienvenue dans SeedDock Manager 🚀</h1>
-    <pre>{{ logo | safe }}</pre>
+    <pre class="logo">{{ logo }}</pre>
+
+    <div class="content">
+        <!-- Ici viendra le wizard étape 1 -->
+        <p><em>Préparation de l'assistant d'installation...</em></p>
+    </div>
 </body>
 </html>
