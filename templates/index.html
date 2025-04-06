@@ -21,6 +21,14 @@
             overflow-x: auto;
             border-radius: 5px;
         }
+	.logo-block {
+		background-color: black;
+		padding: 1em;
+		border-radius: 5px;
+		overflow-x: auto;
+		white-space: pre;
+		font-family: monospace;
+	}
         .content {
             margin-top: 2em;
         }
@@ -28,7 +36,9 @@
 </head>
 <body>
     <h1>Bienvenue dans SeedDock Manager 🚀</h1>
-    <pre class="logo">{{ logo }}</pre>
+    <div class="logo-block">
+        {{ logo|safe }}
+    </div>
 
     <div class="content">
         <!-- Ici viendra le wizard étape 1 -->
