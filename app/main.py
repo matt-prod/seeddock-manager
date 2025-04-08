@@ -10,7 +10,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="/app/templates")
 
 vault_path = "/srv/sdm/SeedDock/SDM/group_vars/all.yml"
-vault_pass_file = "/srv/sdm/SeedDock/SDM/vault_pass"
+vault_pass_file = "/srv/sdm/config/vault_pass"
 logo_script = "/srv/sdm/includes/logo.sh"
 variables_script = "/srv/sdm/includes/variables.sh"
 
