@@ -1,19 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SeedDock - Création de l'administrateur</title>
+    <title>SeedDock - Création Admin</title>
     <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            text-align: center;
+        }
+        form {
+            display: inline-block;
+            margin-top: 50px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input {
+            padding: 8px;
+            margin: 8px 0;
+            width: 90%;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <h1>👤 Création du compte administrateur</h1>
-    <form action="/step1" method="post">
+    <form method="post">
         <label for="username">Nom d'utilisateur :</label><br>
-        <input type="text" id="username" name="username" required><br><br>
+        <input type="text" id="username" name="username" required><br>
 
         <label for="password">Mot de passe :</label><br>
-        <input type="password" id="password" name="password" required><br><br>
+        <input type="password" id="password" name="password" required><br>
 
-        <button type="submit">Continuer ➡️</button>
+        <button type="submit">Créer le compte 🔐</button>
     </form>
 </body>
 </html>
