@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+import time
 import subprocess
 import os
 import yaml
@@ -182,8 +183,76 @@ async def step3_powerdns_submit(request: Request, api_url: str = Form(...), api_
 async def step4(request: Request):
     return templates.TemplateResponse("step4.html", {"request": request})
 
+
 @app.post("/step4")
-async def handle_step4(request: Request, email: str = Form(...)):
-    return HTMLResponse("<h2>Configuration terminée. Redéploiement de Traefik…</h2>") if update_vault_section({
-        "certbot": {"email": email}
-    }) is True else HTMLResponse("Erreur étape 4", status_code=500)
+async def handle_step4(request: Request, email: str = Form(...), challenge: str = Form(...)):
+    # 1. Mise à jour du vault
+    ok = update_vault_section({"certbot": {"email": email, "challenge": challenge}})
+    if ok is not True:
+        return HTMLResponse("Erreur vault step4", status_code=500)
+
+    # 2. Lecture de l'état du vault pour déterminer le provider + IPv6
+    try:
+        result = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT,
+            capture_output=True, text=True, check=True
+        )
+        vault = yaml.safe_load(result.stdout)
+        domain = vault.get("domain", {})
+        provider = domain.get("provider")
+        domain_name = domain.get("name", "")
+        ipv6_enabled = vault.get("network", {}).get("ipv6", False)
+
+        if not provider or not domain_name:
+            return HTMLResponse("Domaine ou provider manquant", status_code=500)
+
+        # 3. Création record DNS sdm.domain.tld
+        playbook = f"playbooks/providers/{provider}/create_record.yml"
+        fqdn = f"sdm.{domain_name}"
+
+        args = [
+            "ansible-playbook", playbook,
+            "-i", "inventory/hosts",
+            "--vault-password-file", VAULT_PASS_REL_PATH,
+            "--extra-vars", f"fqdn={fqdn} type=A"
+        ]
+        subprocess.run(args, cwd=SDM_ROOT, check=True)
+
+        if ipv6_enabled:
+            args_ipv6 = args.copy()
+            args_ipv6[-1] = f"fqdn={fqdn} type=AAAA"
+            subprocess.run(args_ipv6, cwd=SDM_ROOT, check=True)
+
+    except subprocess.CalledProcessError as e:
+        return HTMLResponse(f"Erreur playbook DNS : {e.stderr}", status_code=500)
+    except Exception as e:
+        return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
+
+    return RedirectResponse("/step4_progress", status_code=302)
+
+
+@app.get("/step4_progress", response_class=HTMLResponse)
+async def step4_progress(request: Request):
+    return templates.TemplateResponse("step4_progress.html", {"request": request})
+
+
+@app.get("/redirect", response_class=HTMLResponse)
+async def redirect_final(request: Request):
+    try:
+        result = subprocess.run(
+            ["ansible-playbook", "playbooks/redeploy_traefik.yml",
+             "--vault-password-file", VAULT_PASS_REL_PATH,
+             "-i", "inventory/hosts"],
+            cwd=SDM_ROOT,
+            check=True
+        )
+        result_vault = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT, capture_output=True, text=True
+        )
+        vault = yaml.safe_load(result_vault.stdout)
+        fqdn = f"sdm.{vault['domain']['name']}"
+        return RedirectResponse(f"https://{fqdn}", status_code=302)
+    except Exception as e:
+        return HTMLResponse(f"Erreur redéploiement : {str(e)}", status_code=500)

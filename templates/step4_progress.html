@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Déploiement en cours...</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding-top: 50px; }
+        #bar { width: 0%; height: 30px; background: #4CAF50; transition: width 0.5s; }
+        #container { width: 80%; background: #eee; margin: auto; }
+    </style>
+</head>
+<body>
+    <h2>Redéploiement de Traefik...</h2>
+    <div id="container"><div id="bar"></div></div>
+    <p id="status">Initialisation...</p>
+    <script>
+        let width = 0;
+        let bar = document.getElementById("bar");
+        let status = document.getElementById("status");
+        let interval = setInterval(() => {
+            width += 10;
+            bar.style.width = width + "%";
+            status.innerText = "Progression : " + width + "%";
+            if (width >= 100) {
+                clearInterval(interval);
+                status.innerText = "Redirection en cours...";
+                window.location.href = "/redirect";
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
