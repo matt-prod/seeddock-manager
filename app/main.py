@@ -43,34 +43,37 @@ async def show_step1(request: Request):
 
 @app.post("/step1")
 async def handle_step1(request: Request, username: str = Form(...), password: str = Form(...)):
-    if not os.path.exists(vault_pass_file):
-        return HTMLResponse("Erreur : fichier vault_pass manquant.", status_code=500)
+    vault_path = "./group_vars/all.yml"  # Chemin relatif depuis /srv/sdm (cohérent avec ansible.cfg)
 
     try:
-        # Lecture du vault
+        # Lecture du vault existant (en utilisant le ansible.cfg)
         result = subprocess.run(
-            ["ansible-vault", "view", vault_path, "--vault-password-file", vault_pass_file],
-            capture_output=True, text=True
+            ["ansible-vault", "view", vault_path],
+            cwd="/srv/sdm",  # essentiel pour que ansible.cfg soit pris en compte
+            capture_output=True, text=True, check=True
         )
-        if result.returncode != 0:
-            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
-
         data = yaml.safe_load(result.stdout) or {}
+
+        # Mise à jour des infos admin
         data["user"] = {"name": username, "password": password}
         data["account"] = {"admin": 1}
 
-        with open("/tmp/all.yml", "w") as f:
+        tmp_vault = "/tmp/all.yml"
+        with open(tmp_vault, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", "/tmp/all.yml", "--vault-password-file", vault_pass_file, "--output", vault_path],
+            ["ansible-vault", "encrypt", tmp_vault, "--output", vault_path],
+            cwd="/srv/sdm",
             check=True
         )
-        os.remove("/tmp/all.yml")
+
+        os.remove(tmp_vault)
+
         return RedirectResponse("/step1_success", status_code=302)
 
     except subprocess.CalledProcessError as e:
-        return HTMLResponse(f"Erreur Ansible Vault : {e.stderr or e.stdout}", status_code=500)
+        return HTMLResponse(f"Erreur Ansible Vault : {e.stderr}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
 
