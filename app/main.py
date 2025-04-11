@@ -38,6 +38,20 @@ async def index(request: Request):
 # Step 1 : Création du compte admin
 @app.get("/step1", response_class=HTMLResponse)
 async def show_step1(request: Request):
+    # Vérifie si le vault est déjà chiffré
+    if os.path.exists(vault_path) and os.path.exists(vault_pass_file):
+        try:
+            with open(vault_path, "r") as f:
+                first_line = f.readline().strip()
+                if not first_line.startswith("$ANSIBLE_VAULT"):
+                    # Si le vault est en clair, on le chiffre
+                    subprocess.run(
+                        ["ansible-vault", "encrypt", vault_path, "--vault-password-file", vault_pass_file],
+                        check=True
+                    )
+        except Exception as e:
+            return HTMLResponse(f"Erreur lors du chiffrement initial : {e}", status_code=500)
+
     return templates.TemplateResponse("step1.html", {"request": request})
 
 
