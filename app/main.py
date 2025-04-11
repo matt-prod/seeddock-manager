@@ -128,18 +128,17 @@ async def handle_step2(request: Request, enable_ipv6: str = Form(...)):
 async def step3(request: Request):
     return templates.TemplateResponse("step3.html", {"request": request})
 
-@app.post("/step3")
-async def handle_step3(request: Request, domain_enabled: str = Form(...), domain_name: str = Form(""), provider: str = Form("")):
+@app.post("/step3_{provider}")
+async def provider_handler(request: Request, provider: str):
+    form = await request.form()
+    form_data = {key: form.get(key) for key in form.keys()}
+
     result = subprocess.run(
         ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
         cwd=SDM_ROOT, capture_output=True, text=True, check=True
     )
     data = yaml.safe_load(result.stdout) or {}
-    data["domain"] = {
-        "enabled": domain_enabled == "yes",
-        "name": domain_name,
-        "provider": provider
-    }
+    data["provider_config"] = {provider: form_data}
 
     tmp_path = "/tmp/all.yml"
     with open(tmp_path, "w") as f:
@@ -157,7 +156,7 @@ async def handle_step3(request: Request, domain_enabled: str = Form(...), domain
     )
 
     os.remove(tmp_path)
-    return RedirectResponse(f"/step3_{provider}", status_code=302)
+    return RedirectResponse("/step4", status_code=302)
 
 # === STEP 3.x : provider spécifiques
 @app.get("/step3_{provider}", response_class=HTMLResponse)
