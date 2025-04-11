@@ -12,9 +12,7 @@ templates = Jinja2Templates(directory="/app/templates")
 # === CHEMINS CENTRALISÉS ===
 SDM_ROOT = "/srv/sdm"
 VAULT_REL_PATH = "./group_vars/all.yml"
-VAULT_ABS_PATH = os.path.join(SDM_ROOT, "group_vars", "all.yml")
 VAULT_PASS_REL_PATH = "./config/vault_pass"
-VAULT_PASS_ABS_PATH = os.path.join(SDM_ROOT, "config", "vault_pass")
 LOGO_SCRIPT = os.path.join(SDM_ROOT, "includes", "logo.sh")
 VARIABLES_SCRIPT = os.path.join(SDM_ROOT, "includes", "variables.sh")
 
@@ -41,13 +39,20 @@ async def index(request: Request):
 # === STEP 1 : Création du compte admin ===
 @app.get("/step1", response_class=HTMLResponse)
 async def show_step1(request: Request):
-    if os.path.exists(VAULT_ABS_PATH) and os.path.exists(VAULT_PASS_ABS_PATH):
+    vault_path = os.path.join(SDM_ROOT, VAULT_REL_PATH)
+    vault_pass_file = os.path.join(SDM_ROOT, VAULT_PASS_REL_PATH)
+
+    if os.path.exists(vault_path) and os.path.exists(vault_pass_file):
         try:
-            with open(VAULT_ABS_PATH, "r") as f:
+            with open(vault_path, "r") as f:
                 first_line = f.readline().strip()
                 if not first_line.startswith("$ANSIBLE_VAULT"):
                     subprocess.run(
-                        ["ansible-vault", "encrypt", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+                        [
+                            "ansible-vault", "encrypt", VAULT_REL_PATH,
+                            "--vault-password-file", VAULT_PASS_REL_PATH,
+                            "--encrypt-vault-id", "default"
+                        ],
                         cwd=SDM_ROOT,
                         check=True
                     )
@@ -74,7 +79,12 @@ async def handle_step1(request: Request, username: str = Form(...), password: st
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
             cwd=SDM_ROOT,
             check=True
         )
@@ -120,7 +130,12 @@ async def handle_step2(request: Request, enable_ipv6: str = Form(...)):
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
             cwd=SDM_ROOT,
             check=True
         )
@@ -158,7 +173,12 @@ async def handle_step3(request: Request, domain_enabled: str = Form(...), domain
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
             cwd=SDM_ROOT,
             check=True
         )
@@ -192,7 +212,12 @@ async def handle_step4(request: Request, email: str = Form(...)):
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
             cwd=SDM_ROOT,
             check=True
         )
