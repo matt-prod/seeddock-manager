@@ -9,12 +9,13 @@ from ansi2html import Ansi2HTMLConverter
 app = FastAPI()
 templates = Jinja2Templates(directory="/app/templates")
 
-# Chemins corrects selon le montage des volumes
-vault_path = "/srv/sdm/SeedDock/SDM/group_vars/all.yml"
-vault_pass_file = "/srv/sdm/SeedDock/SDM/config/vault_pass"
-logo_script = "/srv/sdm/includes/logo.sh"
-variables_script = "/srv/sdm/includes/variables.sh"
-
+# Chemins centralisés
+SDM_BASE_DIR = "/srv/sdm"
+vault_path = f"{SDM_BASE_DIR}/SeedDock/SDM/group_vars/all.yml"
+vault_pass_file = f"{SDM_BASE_DIR}/SeedDock/SDM/config/vault_pass"
+logo_script = f"{SDM_BASE_DIR}/includes/logo.sh"
+variables_script = f"{SDM_BASE_DIR}/includes/variables.sh"
+ansible_cwd = SDM_BASE_DIR  # Pour le ansible.cfg
 
 def get_logo_output():
     if not os.path.exists(logo_script):
@@ -28,47 +29,34 @@ def get_logo_output():
     except Exception as e:
         return f"[Exception] {str(e)}"
 
-
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     logo = get_logo_output()
     return templates.TemplateResponse("index.html", {"request": request, "logo": logo})
 
-
-# Step 1 : Création du compte admin
 @app.get("/step1", response_class=HTMLResponse)
 async def show_step1(request: Request):
-    # Vérifie si le vault est déjà chiffré
     if os.path.exists(vault_path) and os.path.exists(vault_pass_file):
         try:
             with open(vault_path, "r") as f:
-                first_line = f.readline().strip()
-                if not first_line.startswith("$ANSIBLE_VAULT"):
-                    # Si le vault est en clair, on le chiffre
+                if not f.readline().strip().startswith("$ANSIBLE_VAULT"):
                     subprocess.run(
                         ["ansible-vault", "encrypt", vault_path, "--vault-password-file", vault_pass_file],
                         check=True
                     )
         except Exception as e:
             return HTMLResponse(f"Erreur lors du chiffrement initial : {e}", status_code=500)
-
     return templates.TemplateResponse("step1.html", {"request": request})
-
 
 @app.post("/step1")
 async def handle_step1(request: Request, username: str = Form(...), password: str = Form(...)):
-    vault_path = "./group_vars/all.yml"  # Chemin relatif depuis /srv/sdm (cohérent avec ansible.cfg)
-
     try:
-        # Lecture du vault existant (en utilisant le ansible.cfg)
         result = subprocess.run(
-            ["ansible-vault", "view", vault_path],
-            cwd="/srv/sdm",  # essentiel pour que ansible.cfg soit pris en compte
+            ["ansible-vault", "view", "./group_vars/all.yml"],
+            cwd=ansible_cwd,
             capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
-
-        # Mise à jour des infos admin
         data["user"] = {"name": username, "password": password}
         data["account"] = {"admin": 1}
 
@@ -77,20 +65,18 @@ async def handle_step1(request: Request, username: str = Form(...), password: st
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_vault, "--output", vault_path],
-            cwd="/srv/sdm",
+            ["ansible-vault", "encrypt", tmp_vault, "--output", "./group_vars/all.yml"],
+            cwd=ansible_cwd,
             check=True
         )
 
         os.remove(tmp_vault)
-
         return RedirectResponse("/step1_success", status_code=302)
 
     except subprocess.CalledProcessError as e:
         return HTMLResponse(f"Erreur Ansible Vault : {e.stderr}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
-
 
 @app.get("/step1_success", response_class=HTMLResponse)
 async def step1_success(request: Request):
@@ -100,7 +86,6 @@ async def step1_success(request: Request):
     <a href="/step2">Suivant</a>
     </body></html>
     """)
-
 
 # Step 2 : IP et IPv6
 @app.get("/step2", response_class=HTMLResponse)
