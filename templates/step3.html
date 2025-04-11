@@ -1,35 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Étape 3 - Nom de domaine & DNS</title>
+    <title>Step 3 - Domaine & Provider DNS</title>
     <meta charset="utf-8">
+    <script>
+        function toggleDomainFields() {
+            const isEnabled = document.getElementById('ndd_yes').checked;
+            document.getElementById('domain_fields').style.display = isEnabled ? 'block' : 'none';
+        }
+    </script>
 </head>
 <body>
-    <h1>📛 Configuration du nom de domaine</h1>
-    <form method="post" action="/step3">
-        <p>Souhaitez-vous utiliser un nom de domaine ?</p>
-        <label><input type="radio" name="use_domain" value="yes" checked> Oui</label>
-        <label><input type="radio" name="use_domain" value="no"> Non</label><br><br>
+    <h2>Étape 3 : Utiliser un nom de domaine</h2>
+    <form action="/step3" method="post">
 
-        <div>
-            <label for="domain">Nom de domaine :</label><br>
-            <input type="text" name="domain" id="domain"><br><br>
+        <label><input type="radio" name="domain_enabled" id="ndd_yes" value="yes" onclick="toggleDomainFields()" required> Oui</label>
+        <label><input type="radio" name="domain_enabled" value="no" onclick="toggleDomainFields()"> Non</label>
 
-            <label for="email">Adresse email (Let's Encrypt) :</label><br>
-            <input type="email" name="email" id="email"><br><br>
+        <div id="domain_fields" style="display:none; margin-top: 10px;">
+            <label for="domain_name">Nom de domaine :</label><br>
+            <input type="text" name="domain_name" id="domain_name"><br><br>
 
-            <label for="provider">Provider DNS pour la gestion automatique :</label><br>
+            <label for="provider">Fournisseur DNS :</label><br>
             <select name="provider" id="provider">
+                <option value="">-- Choisir --</option>
                 <option value="cloudflare">Cloudflare (API)</option>
                 <option value="hetzner">Hetzner (API)</option>
-                <option value="rfc2136">RFC2136 (TSIG)</option>
+                <option value="rfc2136">RFC2136</option>
                 <option value="powerdns">PowerDNS (API)</option>
-                <option value="none">Aucun (mode manuel)</option>
             </select><br><br>
         </div>
 
-        <button type="submit">Suivant ➡️</button>
+        <button type="submit">Suivant</button>
     </form>
 </body>
 </html>
-

@@ -1,14 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Déploiement Traefik</title>
-  <meta charset="utf-8">
+    <title>Step 4 - E-mail & Challenge</title>
+    <meta charset="utf-8">
+    <script>
+        function toggleEmail() {
+            const isDns01 = document.getElementById('dns01').checked;
+            document.getElementById('email_section').style.display = isDns01 ? 'block' : 'block';
+        }
+    </script>
 </head>
 <body>
-  <h1>🛠️ Déploiement de Traefik (prod)</h1>
-  <form method="post">
-    <p>Cette opération va générer le fichier <code>traefik.yml</code> et déployer le conteneur <strong>traefik_prod</strong>.</p>
-    <button type="submit">Déployer Traefik 🚀</button>
-  </form>
+    <h2>Étape 4 : Informations pour Let's Encrypt</h2>
+    <form action="/step4" method="post">
+
+        <label for="email">Adresse e-mail (Let's Encrypt) :</label><br>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <p>Type de challenge pour les certificats :</p>
+        <label><input type="radio" name="challenge" id="dns01" value="dns-01" onclick="toggleEmail()" required> DNS-01</label><br>
+        <label><input type="radio" name="challenge" value="http-01" onclick="toggleEmail()"> HTTP-01</label><br><br>
+
+        <button type="submit">Terminer et déployer Traefik</button>
+    </form>
 </body>
 </html>
