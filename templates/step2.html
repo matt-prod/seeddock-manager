@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Étape 2 - Détection des IPs</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>🌐 Détection des IPs</h1>
+    <p>IP publique détectée (IPv4) : <strong>{{ ipv4 }}</strong></p>
+    <p>IP publique détectée (IPv6) : <strong>{{ ipv6 }}</strong></p>
+
+    <form method="post" action="/step2">
+        <p>Souhaitez-vous activer l'IPv6 pour votre infrastructure Docker/Traefik ?</p>
+        <label>
+            <input type="radio" name="enable_ipv6" value="yes"> Oui
+        </label>
+        <label>
+            <input type="radio" name="enable_ipv6" value="no" checked> Non
+        </label><br><br>
+        <button type="submit">Suivant ➡️</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Étape 3 - Nom de domaine & DNS</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>📛 Configuration du nom de domaine</h1>
+    <form method="post" action="/step3">
+        <p>Souhaitez-vous utiliser un nom de domaine ?</p>
+        <label><input type="radio" name="use_domain" value="yes" checked> Oui</label>
+        <label><input type="radio" name="use_domain" value="no"> Non</label><br><br>
+
+        <div>
+            <label for="domain">Nom de domaine :</label><br>
+            <input type="text" name="domain" id="domain"><br><br>
+
+            <label for="email">Adresse email (Let's Encrypt) :</label><br>
+            <input type="email" name="email" id="email"><br><br>
+
+            <label for="provider">Provider DNS pour la gestion automatique :</label><br>
+            <select name="provider" id="provider">
+                <option value="cloudflare">Cloudflare (API)</option>
+                <option value="hetzner">Hetzner (API)</option>
+                <option value="rfc2136">RFC2136 (TSIG)</option>
+                <option value="powerdns">PowerDNS (API)</option>
+                <option value="none">Aucun (mode manuel)</option>
+            </select><br><br>
+        </div>
+
+        <button type="submit">Suivant ➡️</button>
+    </form>
+</body>
+</html>
+
