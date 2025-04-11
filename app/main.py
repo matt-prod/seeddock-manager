@@ -45,7 +45,7 @@ async def show_step1(request: Request):
         try:
             with open(VAULT_ABS_PATH, "r") as f:
                 first_line = f.readline().strip()
-                if not firs_line.startswith("$ANSIBLE_VAULT"):
+                if not first_line.startswith("$ANSIBLE_VAULT"):
                     subprocess.run(
                         ["ansible-vault", "encrypt", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
                         cwd=SDM_ROOT,
