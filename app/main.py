@@ -191,112 +191,156 @@ async def handle_step3(request: Request, domain_enabled: str = Form(...), domain
         return HTMLResponse(f"Erreur étape 3 : {e}", status_code=500)
 
 @app.post("/step3/cloudflare")
-async def handle_step3_cloudflare(request: Request, email: str = Form(...), api_key: str = Form(...)):
+async def step3_cloudflare_post(
+    request: Request,
+    email: str = Form(...),
+    api_key: str = Form(...)
+):
     try:
         result = subprocess.run(
             ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
             cwd=SDM_ROOT, capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
-        data["cloudflare"] = {"email": email, "api_key": api_key}
-
-        with open("/tmp/all.yml", "w") as f:
-            yaml.dump(data, f, default_flow_style=False)
-
-        subprocess.run([
-            "ansible-vault", "encrypt", "/tmp/all.yml",
-            "--vault-password-file", VAULT_PASS_REL_PATH,
-            "--output", VAULT_REL_PATH, "--encrypt-vault-id", "default"
-        ], cwd=SDM_ROOT, check=True)
-
-        os.remove("/tmp/all.yml")
-        return RedirectResponse("/step4", status_code=302)
-
-    except Exception as e:
-        return HTMLResponse(f"Erreur configuration Cloudflare : {e}", status_code=500)
-
-
-@app.post("/step3/hetzner")
-async def handle_step3_hetzner(request: Request, api_token: str = Form(...)):
-    try:
-        result = subprocess.run(
-            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
-            cwd=SDM_ROOT, capture_output=True, text=True, check=True
-        )
-        data = yaml.safe_load(result.stdout) or {}
-        data["hetzner"] = {"api_token": api_token}
-
-        with open("/tmp/all.yml", "w") as f:
-            yaml.dump(data, f, default_flow_style=False)
-
-        subprocess.run([
-            "ansible-vault", "encrypt", "/tmp/all.yml",
-            "--vault-password-file", VAULT_PASS_REL_PATH,
-            "--output", VAULT_REL_PATH, "--encrypt-vault-id", "default"
-        ], cwd=SDM_ROOT, check=True)
-
-        os.remove("/tmp/all.yml")
-        return RedirectResponse("/step4", status_code=302)
-
-    except Exception as e:
-        return HTMLResponse(f"Erreur configuration Hetzner : {e}", status_code=500)
-
-
-@app.post("/step3/powerdns")
-async def handle_step3_powerdns(request: Request, api_url: str = Form(...), api_token: str = Form(...)):
-    try:
-        result = subprocess.run(
-            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
-            cwd=SDM_ROOT, capture_output=True, text=True, check=True
-        )
-        data = yaml.safe_load(result.stdout) or {}
-        data["powerdns"] = {"api_url": api_url, "api_token": api_token}
-
-        with open("/tmp/all.yml", "w") as f:
-            yaml.dump(data, f, default_flow_style=False)
-
-        subprocess.run([
-            "ansible-vault", "encrypt", "/tmp/all.yml",
-            "--vault-password-file", VAULT_PASS_REL_PATH,
-            "--output", VAULT_REL_PATH, "--encrypt-vault-id", "default"
-        ], cwd=SDM_ROOT, check=True)
-
-        os.remove("/tmp/all.yml")
-        return RedirectResponse("/step4", status_code=302)
-
-    except Exception as e:
-        return HTMLResponse(f"Erreur configuration PowerDNS : {e}", status_code=500)
-
-
-@app.post("/step3/rfc2136")
-async def handle_step3_rfc2136(request: Request, server: str = Form(...), key_name: str = Form(...), key_secret: str = Form(...)):
-    try:
-        result = subprocess.run(
-            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
-            cwd=SDM_ROOT, capture_output=True, text=True, check=True
-        )
-        data = yaml.safe_load(result.stdout) or {}
-        data["rfc2136"] = {
-            "server": server,
-            "key_name": key_name,
-            "key_secret": key_secret
+        data["dns_provider_config"] = {
+            "cloudflare": {
+                "email": email,
+                "api_key": api_key
+            }
         }
 
-        with open("/tmp/all.yml", "w") as f:
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
-        subprocess.run([
-            "ansible-vault", "encrypt", "/tmp/all.yml",
-            "--vault-password-file", VAULT_PASS_REL_PATH,
-            "--output", VAULT_REL_PATH, "--encrypt-vault-id", "default"
-        ], cwd=SDM_ROOT, check=True)
-
-        os.remove("/tmp/all.yml")
+        subprocess.run(
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
+            cwd=SDM_ROOT, check=True
+        )
+        os.remove(tmp_path)
         return RedirectResponse("/step4", status_code=302)
 
     except Exception as e:
-        return HTMLResponse(f"Erreur configuration RFC2136 : {e}", status_code=500)
+        return HTMLResponse(f"Erreur Cloudflare POST : {e}", status_code=500)
 
+@app.post("/step3/hetzner")
+async def step3_hetzner_post(
+    request: Request,
+    api_token: str = Form(...)
+):
+    try:
+        result = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT, capture_output=True, text=True, check=True
+        )
+        data = yaml.safe_load(result.stdout) or {}
+        data["dns_provider_config"] = {
+            "hetzner": {
+                "api_token": api_token
+            }
+        }
+
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+        subprocess.run(
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
+            cwd=SDM_ROOT, check=True
+        )
+        os.remove(tmp_path)
+        return RedirectResponse("/step4", status_code=302)
+
+    except Exception as e:
+        return HTMLResponse(f"Erreur Hetzner POST : {e}", status_code=500)
+
+@app.post("/step3/powerdns")
+async def step3_powerdns_post(
+    request: Request,
+    api_url: str = Form(...),
+    api_token: str = Form(...)
+):
+    try:
+        result = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT, capture_output=True, text=True, check=True
+        )
+        data = yaml.safe_load(result.stdout) or {}
+        data["dns_provider_config"] = {
+            "powerdns": {
+                "api_url": api_url,
+                "api_token": api_token
+            }
+        }
+
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+        subprocess.run(
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
+            cwd=SDM_ROOT, check=True
+        )
+        os.remove(tmp_path)
+        return RedirectResponse("/step4", status_code=302)
+
+    except Exception as e:
+        return HTMLResponse(f"Erreur PowerDNS POST : {e}", status_code=500)
+
+@app.post("/step3/rfc2136")
+async def step3_rfc2136_post(
+    request: Request,
+    server: str = Form(...),
+    key_name: str = Form(...),
+    key_secret: str = Form(...)
+):
+    try:
+        result = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT, capture_output=True, text=True, check=True
+        )
+        data = yaml.safe_load(result.stdout) or {}
+        data["dns_provider_config"] = {
+            "rfc2136": {
+                "server": server,
+                "key_name": key_name,
+                "key_secret": key_secret
+            }
+        }
+
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
+            yaml.dump(data, f, default_flow_style=False)
+
+        subprocess.run(
+            [
+                "ansible-vault", "encrypt", tmp_path,
+                "--vault-password-file", VAULT_PASS_REL_PATH,
+                "--output", VAULT_REL_PATH,
+                "--encrypt-vault-id", "default"
+            ],
+            cwd=SDM_ROOT, check=True
+        )
+        os.remove(tmp_path)
+        return RedirectResponse("/step4", status_code=302)
+
+    except Exception as e:
+        return HTMLResponse(f"Erreur RFC2136 POST : {e}", status_code=500)
 
 # === STEP 4 : Certbot Email ===
 @app.get("/step4", response_class=HTMLResponse)
