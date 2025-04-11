@@ -6,13 +6,17 @@
 </head>
 <body>
     <h2>Cloudflare - Configuration</h2>
-    <form method="post">
-        <label>Email Cloudflare :</label><br>
-        <input type="email" name="email" required><br><br>
+    <form method="post" onsubmit="this.querySelector('button').disabled = true;">
+        <fieldset>
+            <legend>Informations API</legend>
 
-        <label>API Key :</label><br>
-        <input type="text" name="api_key" required><br><br>
+            <label>Email Cloudflare :</label><br>
+            <input type="email" name="email" required><br><br>
 
+            <label>API Key :</label><br>
+            <input type="text" name="api_key" required><br><br>
+
+        </fieldset>
         <button type="submit">Enregistrer & Continuer</button>
     </form>
 </body>

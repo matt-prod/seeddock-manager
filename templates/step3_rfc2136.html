@@ -6,16 +6,20 @@
 </head>
 <body>
     <h2>RFC2136 (DNS dynamique) - Configuration</h2>
-    <form method="post">
-        <label>Serveur DNS :</label><br>
-        <input type="text" name="server" required><br><br>
+    <form method="post" onsubmit="this.querySelector('button').disabled = true;">
+        <fieldset>
+            <legend>Paramètres de connexion</legend>
 
-        <label>Nom de la clé :</label><br>
-        <input type="text" name="key_name" required><br><br>
+            <label>Serveur DNS :</label><br>
+            <input type="text" name="server" required><br><br>
 
-        <label>Clé secrète :</label><br>
-        <input type="text" name="key_secret" required><br><br>
+            <label>Nom de la clé :</label><br>
+            <input type="text" name="key_name" required><br><br>
 
+            <label>Clé secrète :</label><br>
+            <input type="text" name="key_secret" required><br><br>
+
+        </fieldset>
         <button type="submit">Enregistrer & Continuer</button>
     </form>
 </body>

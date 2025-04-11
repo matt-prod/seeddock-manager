@@ -12,23 +12,31 @@
 </head>
 <body>
     <h2>Étape 3 : Utiliser un nom de domaine</h2>
-    <form action="/step3" method="post">
+    <form action="/step3" method="post" onsubmit="this.querySelector('button').disabled = true;">
 
-        <label><input type="radio" name="domain_enabled" id="ndd_yes" value="yes" onclick="toggleDomainFields()" required> Oui</label>
-        <label><input type="radio" name="domain_enabled" value="no" onclick="toggleDomainFields()"> Non</label>
+        <fieldset>
+            <legend>Choix du domaine</legend>
+
+            <label><input type="radio" name="domain_enabled" id="ndd_yes" value="yes" onclick="toggleDomainFields()" required> Oui</label>
+            <label><input type="radio" name="domain_enabled" value="no" onclick="toggleDomainFields()"> Non</label>
+        </fieldset>
 
         <div id="domain_fields" style="display:none; margin-top: 10px;">
-            <label for="domain_name">Nom de domaine :</label><br>
-            <input type="text" name="domain_name" id="domain_name"><br><br>
+            <fieldset>
+                <legend>Informations DNS</legend>
 
-            <label for="provider">Fournisseur DNS :</label><br>
-            <select name="provider" id="provider">
-                <option value="">-- Choisir --</option>
-                <option value="cloudflare">Cloudflare (API)</option>
-                <option value="hetzner">Hetzner (API)</option>
-                <option value="rfc2136">RFC2136</option>
-                <option value="powerdns">PowerDNS (API)</option>
-            </select><br><br>
+                <label for="domain_name">Nom de domaine :</label><br>
+                <input type="text" name="domain_name" id="domain_name" required><br><br>
+
+                <label for="provider">Fournisseur DNS :</label><br>
+                <select name="provider" id="provider" required>
+                    <option value="">-- Choisir --</option>
+                    <option value="cloudflare">Cloudflare (API)</option>
+                    <option value="hetzner">Hetzner (API)</option>
+                    <option value="rfc2136">RFC2136</option>
+                    <option value="powerdns">PowerDNS (API)</option>
+                </select><br><br>
+            </fieldset>
         </div>
 
         <button type="submit">Suivant</button>

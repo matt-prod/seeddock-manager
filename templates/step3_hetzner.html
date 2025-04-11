@@ -6,10 +6,14 @@
 </head>
 <body>
     <h2>Hetzner - Configuration</h2>
-    <form method="post">
-        <label>Token d'API Hetzner :</label><br>
-        <input type="text" name="api_token" required><br><br>
+    <form method="post" onsubmit="this.querySelector('button').disabled = true;">
+        <fieldset>
+            <legend>Token d'accès API</legend>
 
+            <label>Token d'API Hetzner :</label><br>
+            <input type="text" name="api_token" required><br><br>
+
+        </fieldset>
         <button type="submit">Enregistrer & Continuer</button>
     </form>
 </body>
