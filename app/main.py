@@ -9,74 +9,84 @@ from ansi2html import Ansi2HTMLConverter
 app = FastAPI()
 templates = Jinja2Templates(directory="/app/templates")
 
-# Chemins centralisés
-SDM_BASE_DIR = "/srv/sdm"
-vault_path = f"{SDM_BASE_DIR}/SeedDock/SDM/group_vars/all.yml"
-vault_pass_file = f"{SDM_BASE_DIR}/SeedDock/SDM/config/vault_pass"
-logo_script = f"{SDM_BASE_DIR}/includes/logo.sh"
-variables_script = f"{SDM_BASE_DIR}/includes/variables.sh"
-ansible_cwd = SDM_BASE_DIR  # Pour le ansible.cfg
+# === CHEMINS CENTRALISÉS ===
+SDM_ROOT = "/srv/sdm"
+VAULT_REL_PATH = "./group_vars/all.yml"
+VAULT_ABS_PATH = os.path.join(SDM_ROOT, "group_vars", "all.yml")
+VAULT_PASS_REL_PATH = "./config/vault_pass"
+VAULT_PASS_ABS_PATH = os.path.join(SDM_ROOT, "config", "vault_pass")
+LOGO_SCRIPT = os.path.join(SDM_ROOT, "includes", "logo.sh")
+VARIABLES_SCRIPT = os.path.join(SDM_ROOT, "includes", "variables.sh")
+
 
 def get_logo_output():
-    if not os.path.exists(logo_script):
+    if not os.path.exists(LOGO_SCRIPT):
         return "[ERREUR] Fichier logo.sh introuvable"
     try:
         result = subprocess.run(
-            ["bash", "-c", f"source {variables_script} && source {logo_script} && show_logo"],
+            ["bash", "-c", f"source {VARIABLES_SCRIPT} && source {LOGO_SCRIPT} && show_logo"],
             capture_output=True, text=True, timeout=2
         )
         return Ansi2HTMLConverter().convert(result.stdout, full=False) if result.returncode == 0 else "[ERREUR] Impossible d'afficher le logo"
     except Exception as e:
         return f"[Exception] {str(e)}"
 
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     logo = get_logo_output()
     return templates.TemplateResponse("index.html", {"request": request, "logo": logo})
 
+
+# === STEP 1 : Création du compte admin ===
 @app.get("/step1", response_class=HTMLResponse)
 async def show_step1(request: Request):
-    if os.path.exists(vault_path) and os.path.exists(vault_pass_file):
+    if os.path.exists(VAULT_ABS_PATH) and os.path.exists(VAULT_PASS_ABS_PATH):
         try:
-            with open(vault_path, "r") as f:
-                if not f.readline().strip().startswith("$ANSIBLE_VAULT"):
+            with open(VAULT_ABS_PATH, "r") as f:
+                first_line = f.readline().strip()
+                if not firs_line.startswith("$ANSIBLE_VAULT"):
                     subprocess.run(
-                        ["ansible-vault", "encrypt", vault_path, "--vault-password-file", vault_pass_file],
+                        ["ansible-vault", "encrypt", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+                        cwd=SDM_ROOT,
                         check=True
                     )
         except Exception as e:
             return HTMLResponse(f"Erreur lors du chiffrement initial : {e}", status_code=500)
+
     return templates.TemplateResponse("step1.html", {"request": request})
+
 
 @app.post("/step1")
 async def handle_step1(request: Request, username: str = Form(...), password: str = Form(...)):
     try:
         result = subprocess.run(
-            ["ansible-vault", "view", "./group_vars/all.yml"],
-            cwd=ansible_cwd,
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT,
             capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
         data["user"] = {"name": username, "password": password}
         data["account"] = {"admin": 1}
 
-        tmp_vault = "/tmp/all.yml"
-        with open(tmp_vault, "w") as f:
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", tmp_vault, "--output", "./group_vars/all.yml"],
-            cwd=ansible_cwd,
+            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            cwd=SDM_ROOT,
             check=True
         )
 
-        os.remove(tmp_vault)
+        os.remove(tmp_path)
         return RedirectResponse("/step1_success", status_code=302)
 
     except subprocess.CalledProcessError as e:
         return HTMLResponse(f"Erreur Ansible Vault : {e.stderr}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
+
 
 @app.get("/step1_success", response_class=HTMLResponse)
 async def step1_success(request: Request):
@@ -87,7 +97,8 @@ async def step1_success(request: Request):
     </body></html>
     """)
 
-# Step 2 : IP et IPv6
+
+# === STEP 2 : IPv6 ===
 @app.get("/step2", response_class=HTMLResponse)
 async def step2(request: Request):
     return templates.TemplateResponse("step2.html", {"request": request})
@@ -97,41 +108,42 @@ async def step2(request: Request):
 async def handle_step2(request: Request, enable_ipv6: str = Form(...)):
     try:
         result = subprocess.run(
-            ["ansible-vault", "view", vault_path, "--vault-password-file", vault_pass_file],
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT,
             capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
-        data["network"] = {"ipv6": bool(enable_ipv6)}
+        data["network"] = {"ipv6": enable_ipv6 == "on"}
 
-        with open("/tmp/all.yml", "w") as f:
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", "/tmp/all.yml", "--vault-password-file", vault_pass_file, "--output", vault_path],
+            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            cwd=SDM_ROOT,
             check=True
         )
-        os.remove("/tmp/all.yml")
+
+        os.remove(tmp_path)
         return RedirectResponse("/step3", status_code=302)
+
     except Exception as e:
         return HTMLResponse(f"Erreur étape 2 : {e}", status_code=500)
 
 
-# Step 3 : Nom de domaine et provider DNS
+# === STEP 3 : Nom de domaine ===
 @app.get("/step3", response_class=HTMLResponse)
 async def step3(request: Request):
     return templates.TemplateResponse("step3.html", {"request": request})
 
 
 @app.post("/step3")
-async def handle_step3(
-    request: Request,
-    domain_enabled: str = Form(...),
-    domain_name: str = Form(""),
-    provider: str = Form("")
-):
+async def handle_step3(request: Request, domain_enabled: str = Form(...), domain_name: str = Form(""), provider: str = Form("")):
     try:
         result = subprocess.run(
-            ["ansible-vault", "view", vault_path, "--vault-password-file", vault_pass_file],
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT,
             capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
@@ -141,20 +153,24 @@ async def handle_step3(
             "provider": provider
         }
 
-        with open("/tmp/all.yml", "w") as f:
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", "/tmp/all.yml", "--vault-password-file", vault_pass_file, "--output", vault_path],
+            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            cwd=SDM_ROOT,
             check=True
         )
-        os.remove("/tmp/all.yml")
+
+        os.remove(tmp_path)
         return RedirectResponse("/step4", status_code=302)
+
     except Exception as e:
         return HTMLResponse(f"Erreur étape 3 : {e}", status_code=500)
 
 
-# Step 4 : Configuration mail et certificat
+# === STEP 4 : Certbot Email ===
 @app.get("/step4", response_class=HTMLResponse)
 async def step4(request: Request):
     return templates.TemplateResponse("step4.html", {"request": request})
@@ -164,20 +180,25 @@ async def step4(request: Request):
 async def handle_step4(request: Request, email: str = Form(...)):
     try:
         result = subprocess.run(
-            ["ansible-vault", "view", vault_path, "--vault-password-file", vault_pass_file],
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT,
             capture_output=True, text=True, check=True
         )
         data = yaml.safe_load(result.stdout) or {}
         data["certbot"] = {"email": email}
 
-        with open("/tmp/all.yml", "w") as f:
+        tmp_path = "/tmp/all.yml"
+        with open(tmp_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
 
         subprocess.run(
-            ["ansible-vault", "encrypt", "/tmp/all.yml", "--vault-password-file", vault_pass_file, "--output", vault_path],
+            ["ansible-vault", "encrypt", tmp_path, "--vault-password-file", VAULT_PASS_REL_PATH, "--output", VAULT_REL_PATH],
+            cwd=SDM_ROOT,
             check=True
         )
-        os.remove("/tmp/all.yml")
+
+        os.remove(tmp_path)
         return HTMLResponse("<h2>Configuration terminée. Redéploiement de Traefik...</h2>")
+
     except Exception as e:
         return HTMLResponse(f"Erreur étape 4 : {e}", status_code=500)
