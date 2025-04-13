@@ -1,11 +1,9 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-import time
-import subprocess
 import os
 import yaml
-from ansi2html import Ansi2HTMLConverter
+import subprocess
 
 app = FastAPI()
 templates = Jinja2Templates(directory="/app/templates")
@@ -14,21 +12,6 @@ templates = Jinja2Templates(directory="/app/templates")
 SDM_ROOT = "/srv/sdm"
 VAULT_REL_PATH = "./group_vars/all.yml"
 VAULT_PASS_REL_PATH = "./config/vault_pass"
-LOGO_SCRIPT = os.path.join(SDM_ROOT, "includes", "logo.sh")
-VARIABLES_SCRIPT = os.path.join(SDM_ROOT, "includes", "variables.sh")
-
-
-def get_logo_output():
-    if not os.path.exists(LOGO_SCRIPT):
-        return "[ERREUR] Fichier logo.sh introuvable"
-    try:
-        result = subprocess.run(
-            ["bash", "-c", f"source {VARIABLES_SCRIPT} && source {LOGO_SCRIPT} && show_logo"],
-            capture_output=True, text=True, timeout=2
-        )
-        return Ansi2HTMLConverter().convert(result.stdout, full=False) if result.returncode == 0 else "[ERREUR] Impossible d'afficher le logo"
-    except Exception as e:
-        return f"[Exception] {str(e)}"
 
 def update_vault_section(section_data: dict):
     try:
@@ -57,9 +40,7 @@ def update_vault_section(section_data: dict):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    logo = get_logo_output()
-    return templates.TemplateResponse("index.html", {"request": request, "logo": logo})
-
+    return templates.TemplateResponse("index.html", {"request": request})
 
 # === STEP 1 ===
 @app.get("/step1", response_class=HTMLResponse)
@@ -81,12 +62,14 @@ async def show_step1(request: Request):
             return HTMLResponse(f"Erreur lors du chiffrement initial : {e}", status_code=500)
     return templates.TemplateResponse("step1.html", {"request": request})
 
+
 @app.post("/step1")
 async def handle_step1(request: Request, username: str = Form(...), password: str = Form(...)):
     return RedirectResponse("/step1_success", status_code=302) if update_vault_section({
         "user": {"name": username, "password": password},
         "account": {"admin": 1}
     }) is True else HTMLResponse("Erreur step1", status_code=500)
+
 
 @app.get("/step1_success", response_class=HTMLResponse)
 async def step1_success(request: Request):
@@ -103,6 +86,7 @@ async def step1_success(request: Request):
 async def step2(request: Request):
     return templates.TemplateResponse("step2.html", {"request": request})
 
+
 @app.post("/step2")
 async def handle_step2(request: Request, enable_ipv6: str = Form(...)):
     return RedirectResponse("/step3", status_code=302) if update_vault_section({
@@ -110,10 +94,11 @@ async def handle_step2(request: Request, enable_ipv6: str = Form(...)):
     }) is True else HTMLResponse("Erreur étape 2", status_code=500)
 
 
-# === STEP 3 : route principale ===
+# === STEP 3 ===
 @app.get("/step3", response_class=HTMLResponse)
 async def step3(request: Request):
     return templates.TemplateResponse("step3.html", {"request": request})
+
 
 @app.post("/step3")
 async def handle_step3(request: Request, domain_enabled: str = Form(...), domain_name: str = Form(""), provider: str = Form("")):
@@ -134,15 +119,18 @@ async def handle_step3(request: Request, domain_enabled: str = Form(...), domain
 async def step3_cf_form(request: Request):
     return templates.TemplateResponse("step3_cloudflare.html", {"request": request})
 
+
 @app.post("/step3/cloudflare")
 async def step3_cf_submit(request: Request, email: str = Form(...), api_key: str = Form(...)):
     return RedirectResponse("/step4", status_code=302) if update_vault_section({
         "cloudflare": {"email": email, "api_key": api_key}
     }) is True else HTMLResponse("Erreur Cloudflare", status_code=500)
 
+
 @app.get("/step3/hetzner", response_class=HTMLResponse)
 async def step3_hetzner_form(request: Request):
     return templates.TemplateResponse("step3_hetzner.html", {"request": request})
+
 
 @app.post("/step3/hetzner")
 async def step3_hetzner_submit(request: Request, api_token: str = Form(...)):
@@ -150,9 +138,11 @@ async def step3_hetzner_submit(request: Request, api_token: str = Form(...)):
         "hetzner": {"api_token": api_token}
     }) is True else HTMLResponse("Erreur Hetzner", status_code=500)
 
+
 @app.get("/step3/rfc2136", response_class=HTMLResponse)
 async def step3_rfc2136_form(request: Request):
     return templates.TemplateResponse("step3_rfc2136.html", {"request": request})
+
 
 @app.post("/step3/rfc2136")
 async def step3_rfc2136_submit(request: Request, server: str = Form(...), key_name: str = Form(...), key_secret: str = Form(...)):
@@ -164,9 +154,11 @@ async def step3_rfc2136_submit(request: Request, server: str = Form(...), key_na
         }
     }) is True else HTMLResponse("Erreur RFC2136", status_code=500)
 
+
 @app.get("/step3/powerdns", response_class=HTMLResponse)
 async def step3_powerdns_form(request: Request):
     return templates.TemplateResponse("step3_powerdns.html", {"request": request})
+
 
 @app.post("/step3/powerdns")
 async def step3_powerdns_submit(request: Request, api_url: str = Form(...), api_token: str = Form(...)):
@@ -185,51 +177,57 @@ async def step4(request: Request):
 
 
 @app.post("/step4")
-async def handle_step4(request: Request, email: str = Form(...), challenge: str = Form(...)):
-    # 1. Mise à jour du vault
-    ok = update_vault_section({"certbot": {"email": email, "challenge": challenge}})
-    if ok is not True:
-        return HTMLResponse("Erreur vault step4", status_code=500)
-
-    # 2. Lecture de l'état du vault pour déterminer le provider + IPv6
+async def handle_step4(
+    request: Request,
+    email: str = Form(...),
+    challenge: str = Form(...),
+    subdomain: str = Form("sdm"),
+    cloudflare_proxied: str = Form(None)
+):
     try:
+        # Lecture préalable du vault
         result = subprocess.run(
             ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
-            cwd=SDM_ROOT,
-            capture_output=True, text=True, check=True
+            cwd=SDM_ROOT, capture_output=True, text=True, check=True
         )
         vault = yaml.safe_load(result.stdout)
-        domain = vault.get("domain", {})
-        provider = domain.get("provider")
-        domain_name = domain.get("name", "")
+
+        # Prépare les updates
+        updates = {
+            "certbot": {"email": email, "challenge": challenge},
+            "app": {"SDM": {"record": subdomain}}
+        }
+
+        provider = vault.get("domain", {}).get("provider")
+        if provider == "cloudflare":
+            updates["cloudflare"] = {
+                **vault.get("cloudflare", {}),
+                "proxied": cloudflare_proxied == "on"
+            }
+
+        if update_vault_section(updates) is not True:
+            return HTMLResponse("Erreur mise à jour vault", status_code=500)
+
+        domain_name = vault["domain"]["name"]
+        fqdn = f"{subdomain}.{domain_name}"
         ipv6_enabled = vault.get("network", {}).get("ipv6", False)
 
-        if not provider or not domain_name:
-            return HTMLResponse("Domaine ou provider manquant", status_code=500)
-
-        # 3. Création record DNS sdm.domain.tld
-        playbook = f"playbooks/providers/{provider}/create_record.yml"
-        fqdn = f"sdm.{domain_name}"
-
-        args = [
-            "ansible-playbook", playbook,
+        base_args = [
+            "ansible-playbook", f"playbooks/providers/{provider}/create_record.yml",
             "-i", "inventory/hosts",
-            "--vault-password-file", VAULT_PASS_REL_PATH,
-            "--extra-vars", f"fqdn={fqdn} type=A"
+            "--vault-password-file", VAULT_PASS_REL_PATH
         ]
-        subprocess.run(args, cwd=SDM_ROOT, check=True)
 
+        subprocess.run(base_args + ["--extra-vars", f"record_name={fqdn} record_type=A"], cwd=SDM_ROOT, check=True)
         if ipv6_enabled:
-            args_ipv6 = args.copy()
-            args_ipv6[-1] = f"fqdn={fqdn} type=AAAA"
-            subprocess.run(args_ipv6, cwd=SDM_ROOT, check=True)
+            subprocess.run(base_args + ["--extra-vars", f"record_name={fqdn} record_type=AAAA"], cwd=SDM_ROOT, check=True)
+
+        return RedirectResponse("/step4_progress", status_code=302)
 
     except subprocess.CalledProcessError as e:
-        return HTMLResponse(f"Erreur playbook DNS : {e.stderr}", status_code=500)
+        return HTMLResponse(f"Erreur Ansible : {e.stderr}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
-
-    return RedirectResponse("/step4_progress", status_code=302)
 
 
 @app.get("/step4_progress", response_class=HTMLResponse)
@@ -240,19 +238,19 @@ async def step4_progress(request: Request):
 @app.get("/redirect", response_class=HTMLResponse)
 async def redirect_final(request: Request):
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["ansible-playbook", "playbooks/redeploy_traefik.yml",
              "--vault-password-file", VAULT_PASS_REL_PATH,
              "-i", "inventory/hosts"],
-            cwd=SDM_ROOT,
-            check=True
+            cwd=SDM_ROOT, check=True
         )
-        result_vault = subprocess.run(
+        result = subprocess.run(
             ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
             cwd=SDM_ROOT, capture_output=True, text=True
         )
-        vault = yaml.safe_load(result_vault.stdout)
-        fqdn = f"sdm.{vault['domain']['name']}"
-        return RedirectResponse(f"https://{fqdn}", status_code=302)
+        vault = yaml.safe_load(result.stdout)
+        sub = vault.get("app", {}).get("SDM", {}).get("record", "sdm")
+        domain = vault.get("domain", {}).get("name", "example.com")
+        return RedirectResponse(f"https://{sub}.{domain}", status_code=302)
     except Exception as e:
         return HTMLResponse(f"Erreur redéploiement : {str(e)}", status_code=500)
