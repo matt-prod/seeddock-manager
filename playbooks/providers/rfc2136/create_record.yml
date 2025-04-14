@@ -1,0 +1,55 @@
+---
+- name: Create DNS record with PowerDNS (API)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    pdns_api_url: "{{ powerdns.api_url }}"
+    pdns_api_token: "{{ powerdns.api_token }}"
+    domain: "{{ domain.name }}"
+    ipv4: "{{ network.ipv4 }}"
+    ipv6: "{{ network.ipv6 }}"
+    proxied: false  # non utilisé ici, maintenu pour compat
+
+  tasks:
+    - name: Extract subdomain from full record_name
+      set_fact:
+        record_sub: "{{ record_name | regex_replace('\.' + domain + '$', '') }}"
+
+    - name: Create A record (IPv4)
+      when: record_type == "A"
+      uri:
+        url: "{{ pdns_api_url }}/api/v1/servers/localhost/zones/{{ domain }}"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ pdns_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "{{ record_name }}."
+              type: "A"
+              ttl: 60
+              changetype: "REPLACE"
+              records:
+                - content: "{{ ipv4 }}"
+                  disabled: false
+
+    - name: Create AAAA record (IPv6)
+      when: record_type == "AAAA" and ipv6
+      uri:
+        url: "{{ pdns_api_url }}/api/v1/servers/localhost/zones/{{ domain }}"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ pdns_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "{{ record_name }}."
+              type: "AAAA"
+              ttl: 60
+              changetype: "REPLACE"
+              records:
+                - content: "{{ ipv6 }}"
+                  disabled: false

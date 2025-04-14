@@ -10,7 +10,7 @@ COPY requirements.txt .
 COPY playbooks/ /srv/sdm/playbooks/
 
 RUN apt-get update && \
-    apt-get install -y curl dnsutils && \
+    apt-get install -y curl dnsutils ansible && \
     pip install --no-cache-dir -r requirements.txt && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
