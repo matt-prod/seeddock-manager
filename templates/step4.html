@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Step 4 - E-mail & Challenge</title>
+    <title>Étape 4 - Let's Encrypt</title>
     <meta charset="utf-8">
     <script>
-        function toggleEmail() {
-            const isDns01 = document.getElementById('dns01').checked;
-            document.getElementById('email_section').style.display = isDns01 ? 'block' : 'block';
+        function toggleCloudflareOption() {
+            const provider = localStorage.getItem("dns_provider");
+            const section = document.getElementById('proxied_section');
+            if (provider === "cloudflare") {
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
         }
+
+        window.onload = toggleCloudflareOption;
     </script>
 </head>
 <body>
@@ -17,9 +24,18 @@
         <label for="email">Adresse e-mail (Let's Encrypt) :</label><br>
         <input type="email" id="email" name="email" required><br><br>
 
+        <label for="subdomain">Sous-domaine à utiliser pour SDM :</label><br>
+        <input type="text" id="subdomain" name="subdomain" value="sdm" required><br><br>
+
+        <div id="proxied_section" style="display: none;">
+            <label>
+                <input type="checkbox" name="cloudflare_proxied"> Activer le proxy Cloudflare (proxied)
+            </label><br><br>
+        </div>
+
         <p>Type de challenge pour les certificats :</p>
-        <label><input type="radio" name="challenge" id="dns01" value="dns-01" onclick="toggleEmail()" required> DNS-01</label><br>
-        <label><input type="radio" name="challenge" value="http-01" onclick="toggleEmail()"> HTTP-01</label><br><br>
+        <label><input type="radio" name="challenge" value="dns-01" checked> DNS-01</label><br>
+        <label><input type="radio" name="challenge" value="http-01"> HTTP-01</label><br><br>
 
         <button type="submit">Terminer et déployer Traefik</button>
     </form>

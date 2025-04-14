@@ -1,0 +1,49 @@
+---
+- name: Delete DNS record with PowerDNS (API)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    pdns_api_url: "{{ powerdns.api_url }}"
+    pdns_api_token: "{{ powerdns.api_token }}"
+    domain: "{{ domain.name }}"
+    ipv4: "{{ network.ipv4 }}"
+    ipv6: "{{ network.ipv6 }}"
+    proxied: false
+
+  tasks:
+    - name: Delete A record
+      when: record_type == "A"
+      uri:
+        url: "{{ pdns_api_url }}/api/v1/servers/localhost/zones/{{ domain }}"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ pdns_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "{{ record_name }}."
+              type: "A"
+              changetype: "DELETE"
+              records:
+                - content: "{{ ipv4 }}"
+                  disabled: false
+
+    - name: Delete AAAA record
+      when: record_type == "AAAA" and ipv6
+      uri:
+        url: "{{ pdns_api_url }}/api/v1/servers/localhost/zones/{{ domain }}"
+        method: PATCH
+        headers:
+          X-API-Key: "{{ pdns_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          rrsets:
+            - name: "{{ record_name }}."
+              type: "AAAA"
+              changetype: "DELETE"
+              records:
+                - content: "{{ ipv6 }}"
+                  disabled: false

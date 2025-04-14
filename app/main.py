@@ -208,6 +208,7 @@ async def handle_step4(
         if update_vault_section(updates) is not True:
             return HTMLResponse("Erreur mise à jour vault", status_code=500)
 
+        # Exécution des playbooks de création DNS
         domain_name = vault["domain"]["name"]
         fqdn = f"{subdomain}.{domain_name}"
         ipv6_enabled = vault.get("network", {}).get("ipv6", False)
@@ -222,13 +223,21 @@ async def handle_step4(
         if ipv6_enabled:
             subprocess.run(base_args + ["--extra-vars", f"record_name={fqdn} record_type=AAAA"], cwd=SDM_ROOT, check=True)
 
+        # Vérification DNS avec dig (Cloudflare resolver)
+        dig_result = subprocess.run(
+            ["dig", "@1.1.1.1", fqdn, "+short"],
+            capture_output=True, text=True
+        )
+        resolved = dig_result.stdout.strip()
+        if not resolved:
+            return RedirectResponse("/step4_failed", status_code=302)
+
         return RedirectResponse("/step4_progress", status_code=302)
 
     except subprocess.CalledProcessError as e:
         return HTMLResponse(f"Erreur Ansible : {e.stderr}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
-
 
 @app.get("/step4_progress", response_class=HTMLResponse)
 async def step4_progress(request: Request):
