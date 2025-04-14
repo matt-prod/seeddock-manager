@@ -42,6 +42,7 @@ def update_vault_section(section_data: dict):
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 # === STEP 1 ===
 @app.get("/step1", response_class=HTMLResponse)
 async def show_step1(request: Request):
@@ -185,14 +186,12 @@ async def handle_step4(
     cloudflare_proxied: str = Form(None)
 ):
     try:
-        # Lecture préalable du vault
         result = subprocess.run(
             ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
             cwd=SDM_ROOT, capture_output=True, text=True, check=True
         )
         vault = yaml.safe_load(result.stdout)
 
-        # Prépare les updates
         updates = {
             "certbot": {"email": email, "challenge": challenge},
             "app": {"SDM": {"record": subdomain}}
@@ -208,7 +207,6 @@ async def handle_step4(
         if update_vault_section(updates) is not True:
             return HTMLResponse("Erreur mise à jour vault", status_code=500)
 
-        # Exécution des playbooks de création DNS
         domain_name = vault["domain"]["name"]
         fqdn = f"{subdomain}.{domain_name}"
         ipv6_enabled = vault.get("network", {}).get("ipv6", False)
@@ -223,21 +221,20 @@ async def handle_step4(
         if ipv6_enabled:
             subprocess.run(base_args + ["--extra-vars", f"record_name={fqdn} record_type=AAAA"], cwd=SDM_ROOT, check=True)
 
-        # Vérification DNS avec dig (Cloudflare resolver)
         dig_result = subprocess.run(
             ["dig", "@1.1.1.1", fqdn, "+short"],
             capture_output=True, text=True
         )
-        resolved = dig_result.stdout.strip()
-        if not resolved:
+        if not dig_result.stdout.strip():
             return RedirectResponse("/step4_failed", status_code=302)
 
         return RedirectResponse("/step4_progress", status_code=302)
 
     except subprocess.CalledProcessError as e:
-        return HTMLResponse(f"Erreur Ansible : {e.stderr}", status_code=500)
+        return HTMLResponse(f"Erreur Ansible : {e.stderr or e.stdout or str(e)}", status_code=500)
     except Exception as e:
         return HTMLResponse(f"Erreur interne : {str(e)}", status_code=500)
+
 
 @app.get("/step4_progress", response_class=HTMLResponse)
 async def step4_progress(request: Request):
