@@ -4,8 +4,10 @@ WORKDIR /app
 
 COPY app/ app/
 COPY templates/ templates/
-COPY playbooks/ playbooks/
+
 COPY requirements.txt .
+
+COPY playbooks/ /srv/sdm/playbooks/
 
 RUN apt-get update && \
     apt-get install -y curl dnsutils && \
