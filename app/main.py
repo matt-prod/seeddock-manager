@@ -174,7 +174,20 @@ async def step3_powerdns_submit(request: Request, api_url: str = Form(...), api_
 # === STEP 4 ===
 @app.get("/step4", response_class=HTMLResponse)
 async def step4(request: Request):
-    return templates.TemplateResponse("step4.html", {"request": request})
+    try:
+        result = subprocess.run(
+            ["ansible-vault", "view", VAULT_REL_PATH, "--vault-password-file", VAULT_PASS_REL_PATH],
+            cwd=SDM_ROOT, capture_output=True, text=True, check=True
+        )
+        vault = yaml.safe_load(result.stdout)
+        domain = vault.get("domain", {}).get("name", "")
+    except Exception as e:
+        return HTMLResponse(f"Erreur vault lecture domaine : {e}", status_code=500)
+
+    return templates.TemplateResponse("step4.html", {
+        "request": request,
+        "domain": domain
+    })
 
 
 @app.post("/step4")
